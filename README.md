@@ -1,0 +1,2 @@
+# Computational-Neuroscience-project
+This is a project in python on neural networks. Dataset contains weather conditions from all the world. The first part of the project aims at guess in which location you could be, given in input some features to the neural network, e.g. the weather condition on a specific day. The second part of the project instead tries to predict the future behaviour of the temperature of a location, given its past history to the neural net as training.
