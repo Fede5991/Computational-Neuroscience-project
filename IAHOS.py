@@ -13,26 +13,11 @@ import torch.nn as nn
 import torch.optim as optim
 import random
 
-def IAHOS(rounds,method,limits,attempts,variables,iterations,net,
-          training_set,training_labels,validation_set,validation_labels,dim):
-
+def IAHOS(rounds,method,limits,attempts,variables,iterations,Net,
+          training_set,training_labels,validation_set,validation_labels,
+          input_dim,output_dim,device):
     
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-    net.to(device)
-    
-    training_set = torch.tensor(training_set).float().view(-1,7).cuda()
-    training_labels = torch.tensor(validation_set).float().view(-1,len(e)).cuda()
-    
-    #Learning rate
     lr = 0.02    
-    #update
-    train_loss_log = []
-    test_loss_log = []
-    Ni = 7
-    No = len(e)
 
     for r in range(rounds):
         print ("Round ",r+1," of ",rounds)
@@ -41,20 +26,32 @@ def IAHOS(rounds,method,limits,attempts,variables,iterations,net,
             attempts=2
         hm,p_values = hyperparams_initialization(attempts,variables,method,limits,r)
         
-        training_accuracy = []
-        validation_accuracy = []
+        training_accuracy=[]
+        validation_accuracy=[]
         for i in tqdm(range(iterations)):
-            net = Net(Ni,i,hm,No,'train')
-            loss_fn = nn.BCEWithLogitsLoss()
+            net = Net(input_dim,output_dim,i,hm,'train')
+            net.to(device)
+            optimizer = optim.Adam(net.parameters(),lr)
+            loss = torch.nn.MultiLabelSoftMarginLoss()
             net.train()
+            optimizer.zero_grad()
             for num_ep in range(num_epochs):
                 net.zero_grad()
-                out = net(training_set)
-                loss = loss_fn(out,training_labels)
-                loss.backward()
-                for p in net.parameters():
-                    p.data.sub_(p.grad.data * lr)
-                train_loss_log.append(float(loss.data))
+                output = net.forward(training_set)
+                Loss = loss.forward(output,training_labels)
+                Loss.backward()
+                optimizer.step()
+            
+            net.eval()
+            training_acc=(torch.sum(torch.argmax(output,1) == torch.argmax(training_labels,1)))
+            acc = (training_acc.to(torch.device("cpu"))).numpy()
+            training_accuracy.append(acc/len(training_set))
+            output = net.forward(validation_set)
+            _, preds = torch.max(output.data, 1)
+            val_acc=torch.sum(torch.argmax(output,1) == torch.argmax(validation_labels,1))
+            acc = (val_acc.to(torch.device("cpu"))).numpy()
+            validation_accuracy.append(acc/len(validation_set))
+            
         general_perf,general_perf2=extraction_performances(validation_accuracy,training_accuracy,variables,iterations,attempts)
         del training_accuracy
         del validation_accuracy
